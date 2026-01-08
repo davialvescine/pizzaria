@@ -4,8 +4,10 @@ import { AuthUserController } from "./controllers/user/AuthUserController";
 import { RefreshTokenController } from "./controllers/user/RefreshTokenController";
 import { LogoutController } from "./controllers/user/LogoutController";
 import { DetailUserController } from "./controllers/user/DetailUserController";
+import { CreateCategoryController } from "./controllers/Category/CreateCategoryController";
 import { validateSchema } from "./middlewares/validateSchema";
 import { isAuthenticated } from "./middlewares/isAuthenticated";
+import { isAdmin } from "./middlewares/isAdmin";
 import {
   loginRateLimiter,
   refreshRateLimiter,
@@ -48,5 +50,8 @@ router.post(
 // ===========================================
 router.get("/me", isAuthenticated, new DetailUserController().handle);
 router.post("/logout", isAuthenticated, new LogoutController().handle);
+
+// Categoria (apenas ADMIN)
+router.post("/category", isAuthenticated, isAdmin, new CreateCategoryController().handle);
 
 export { router };
