@@ -11,7 +11,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -28,7 +27,27 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  refreshTokens RefreshToken[]
+
   @@map("users")
+}
+
+// ===========================================
+// REFRESH TOKEN - Salvo no banco para segurança
+// ===========================================
+// - Cada refresh token é salvo aqui
+// - Quando usado, é DELETADO e um novo é criado
+// - Se hacker tentar usar token já usado → não existe no banco → BLOQUEADO
+// - No logout, deletamos o token → mesmo válido, não funciona mais
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique  // O token JWT em si
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime // Data de expiração (2 dias após criação)
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
 }
 model Category {
   id        String   @id @default(uuid())

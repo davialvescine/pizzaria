@@ -20,27 +20,40 @@ export const createUserSchema = z.object({
       .string({ error: "Nome não enviado" })
       .min(3, { error: "O Nome precisa ter no mínimo 3 caracteres" })
       .max(30),
-    email: z.string({ error: "Email não enviado" }).email({ error: "Email inválido" }),
-    password: passwordSchema,
+    email: z.email({ error: "Email inválido" }),
+    password: passwordSchema.describe("Senha é obrigatória"),
   }),
 });
 
 export const updateUserSchema = z.object({
   body: z.object({
     username: z.string().min(3).max(30).optional(),
-    email: z.string().email().optional(),
+    email: z.email().optional(),
     password: passwordSchema.optional(),
   }),
 });
 
 export const getUserSchema = z.object({
   params: z.object({
-    userId: z.string().uuid(),
+    userId: z.uuid(),
   }),
 });
 
 export const deleteUserSchema = z.object({
   params: z.object({
-    userId: z.string().uuid(),
+    userId: z.uuid(),
+  }),
+});
+
+export const authenticateUserSchema = z.object({
+  body: z.object({
+    email: z.email({ error: "Email inválido" }),
+    password: z.string({ error: "Senha é obrigatória" }),
+  }),
+});
+
+export const refreshTokenSchema = z.object({
+  body: z.object({
+    refreshToken: z.string({ error: "Refresh token é obrigatório" }),
   }),
 });

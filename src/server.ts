@@ -10,7 +10,7 @@ app.use(cors());
 app.use(router);
 
 // Middleware de tratamento de erros (deve ser o último)
-app.use((error: Error, _req: Request, res: Response, next: NextFunction) => {
+app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
   // Se for um erro conhecido (lançado pelo nosso código)
   if (error.message) {
     return res.status(400).json({
