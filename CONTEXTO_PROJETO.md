@@ -21,6 +21,7 @@
 Sistema backend de gerenciamento de pizzaria desenvolvido em Node.js com TypeScript, utilizando Express 5 como framework web, Prisma ORM para comunicacao com banco de dados PostgreSQL, e Zod para validacao de dados.
 
 **Principais recursos:**
+
 - Autenticacao JWT com Access Token + Refresh Token
 - Rotacao de tokens para seguranca
 - Rate limiting para prevenir ataques de forca bruta
@@ -33,11 +34,11 @@ Sistema backend de gerenciamento de pizzaria desenvolvido em Node.js com TypeScr
 
 O projeto segue o padrao **MVC + Service Layer**, com a seguinte estrutura:
 
-```
+```text
 Requisicao HTTP -> Rotas -> Middlewares -> Controller -> Service -> Banco de Dados
 ```
 
-### Camadas da Arquitetura:
+### Camadas da Arquitetura
 
 1. **Rotas (`routes.ts`)**: Define os endpoints e aplica os middlewares
 2. **Middlewares**: Rate limiting, validacao de schema, autenticacao e autorizacao
@@ -45,7 +46,7 @@ Requisicao HTTP -> Rotas -> Middlewares -> Controller -> Service -> Banco de Dad
 4. **Services**: Contem toda a logica de negocio e comunicacao com o banco de dados
 5. **Prisma Client**: ORM que gerencia a comunicacao com PostgreSQL
 
-### Principios Seguidos:
+### Principios Seguidos
 
 - **Separacao de Responsabilidades**: Cada camada tem uma responsabilidade especifica
 - **Single Responsibility Principle**: Um controller/service para cada operacao
@@ -71,6 +72,9 @@ Requisicao HTTP -> Rotas -> Middlewares -> Controller -> Service -> Banco de Dad
 | **dotenv**            | ^17.2.3  | Carregamento de variaveis de ambiente         |
 | **tsx**               | ^4.21.0  | Executor TypeScript para desenvolvimento      |
 | **pg**                | ^8.16.3  | Driver PostgreSQL                             |
+| **multer**            | ^2.0.0   | Processamento de upload de arquivos           |
+| **cloudinary**        | ^2.6.0   | Upload de imagens para nuvem                  |
+| **sharp**             | ^0.34.0  | Compressao e redimensionamento de imagens     |
 
 ### Dependencias de Desenvolvimento
 
@@ -91,7 +95,7 @@ Requisicao HTTP -> Rotas -> Middlewares -> Controller -> Service -> Banco de Dad
 
 ## Estrutura de Pastas
 
-```
+```text
 backend/
 ├── prisma/
 │   ├── migrations/               # Historico de migracoes do banco
@@ -100,9 +104,17 @@ backend/
 │   ├── @types/                   # Definicoes de tipos TypeScript customizados
 │   │   └── express/
 │   │       └── index.d.ts        # Extensao de tipos do Express (userId, userName, userEmail)
+│   ├── config/                   # Configuracoes de servicos externos
+│   │   ├── cloudinary.ts         # Configuracao do Cloudinary (upload de imagens)
+│   │   └── multer.ts             # Configuracao do Multer (processamento de arquivos)
 │   ├── controllers/              # Controllers (recebem requisicoes)
 │   │   ├── Category/
-│   │   │   └── CreateCategoryController.ts
+│   │   │   ├── CreateCategoryController.ts
+│   │   │   └── ListCategoriesController.ts
+│   │   ├── product/
+│   │   │   ├── CreateProductController.ts
+│   │   │   ├── DeleteProductController.ts
+│   │   │   └── ListProductsByCategoryController.ts
 │   │   └── user/
 │   │       ├── AuthUserController.ts
 │   │       ├── CreateUserController.ts
@@ -121,10 +133,16 @@ backend/
 │   │   └── index.ts
 │   ├── schemas/                  # Schemas de validacao Zod
 │   │   ├── categorySchemas.ts
+│   │   ├── productSchemas.ts
 │   │   └── userSchemas.ts
 │   ├── services/                 # Services (logica de negocio)
 │   │   ├── Category/
-│   │   │   └── CreateCategoryService.ts
+│   │   │   ├── CreateCategoryService.ts
+│   │   │   └── ListCategoriesService.ts
+│   │   ├── product/
+│   │   │   ├── CreateProductService.ts
+│   │   │   ├── DeleteProductService.ts
+│   │   │   └── ListProductsByCategoryService.ts
 │   │   └── user/
 │   │       ├── AuthUserService.ts
 │   │       ├── CreateUserService.ts
@@ -139,7 +157,7 @@ backend/
 └── tsconfig.json                 # Configuracoes do TypeScript
 ```
 
-### Convencoes de Nomenclatura:
+### Convencoes de Nomenclatura
 
 - **Controllers**: `<Action><Entity>Controller.ts` (ex: `CreateUserController.ts`)
 - **Services**: `<Action><Entity>Service.ts` (ex: `CreateUserService.ts`)
@@ -152,7 +170,7 @@ backend/
 
 ### Diagrama de Relacionamentos
 
-```
+```text
 User (1) ─────< (N) RefreshToken
   └─ role: STAFF | ADMIN
 
@@ -182,6 +200,7 @@ Order (1) ───────────────────────�
 ```
 
 **Enum Role:**
+
 - `STAFF` - Funcionario padrao
 - `ADMIN` - Administrador (acesso total)
 
@@ -199,6 +218,7 @@ Order (1) ───────────────────────�
 ```
 
 **Seguranca do RefreshToken:**
+
 - Cada refresh token e salvo no banco
 - Quando usado, e DELETADO e um novo e criado (rotacao)
 - Se hacker tentar usar token ja usado -> nao existe no banco -> BLOQUEADO
@@ -283,7 +303,7 @@ Order (1) ───────────────────────�
 
 O sistema utiliza **Access Token + Refresh Token** para autenticacao segura:
 
-```
+```text
 LOGIN (POST /session)
          │
          ▼
@@ -337,6 +357,7 @@ LOGOUT (POST /logout)
 ### Payload dos Tokens
 
 **Access Token:**
+
 ```json
 {
   "name": "Nome do Usuario",
@@ -348,6 +369,7 @@ LOGOUT (POST /logout)
 ```
 
 **Refresh Token:**
+
 ```json
 {
   "id": "user-uuid",
@@ -366,26 +388,30 @@ LOGOUT (POST /logout)
 **Funcao**: Valida se o usuario esta autenticado verificando o token JWT.
 
 **Fluxo**:
+
 1. Extrai o token do header `Authorization: Bearer <token>`
-2. Verifica se o formato e "Bearer"
-3. Verifica a validade do token usando `jsonwebtoken`
-4. Extrai `sub`, `name`, `email` do payload do token
-5. Adiciona `userId`, `userName`, `userEmail` ao objeto `req`
-6. Chama `next()` se valido, ou retorna erro 401 se invalido
+1. Verifica se o formato e "Bearer"
+1. Verifica a validade do token usando `jsonwebtoken`
+1. Extrai `sub`, `name`, `email` do payload do token
+1. Adiciona `userId`, `userName`, `userEmail` ao objeto `req`
+1. Chama `next()` se valido, ou retorna erro 401 se invalido
 
 **Console.log de debug:**
-```
+
+```text
 [AUTH] Token valido - Usuario: email@exemplo.com
 [AUTH] Erro: Token invalido ou expirado
 [AUTH] Token com erro: <token>
 ```
 
 **Uso**:
+
 ```typescript
 router.get("/me", isAuthenticated, new DetailUserController().handle);
 ```
 
 **Respostas de Erro**:
+
 - `401`: Token nao enviado, formato invalido, ou token invalido/expirado
 
 ---
@@ -397,18 +423,21 @@ router.get("/me", isAuthenticated, new DetailUserController().handle);
 **Pre-requisito**: Deve ser usado **apos** o middleware `isAuthenticated`.
 
 **Fluxo**:
+
 1. Obtem `userId` do `req` (adicionado pelo `isAuthenticated`)
-2. Busca o usuario no banco de dados
-3. Verifica se o campo `role` e igual a `"ADMIN"`
-4. Chama `next()` se for admin, ou retorna erro 403 se nao for
+1. Busca o usuario no banco de dados
+1. Verifica se o campo `role` e igual a `"ADMIN"`
+1. Chama `next()` se for admin, ou retorna erro 403 se nao for
 
 **Console.log de debug:**
-```
+
+```text
 [ADMIN] Acesso permitido - ADMIN: email@exemplo.com
 [ADMIN] Acesso negado - Usuario nao e ADMIN: email@exemplo.com
 ```
 
 **Uso**:
+
 ```typescript
 router.post(
   "/category",
@@ -419,6 +448,7 @@ router.post(
 ```
 
 **Respostas de Erro**:
+
 - `401`: Usuario nao encontrado
 - `403`: Acesso negado. Apenas administradores.
 
@@ -429,13 +459,15 @@ router.post(
 **Funcao**: Valida dados da requisicao (body, query, params) usando schemas Zod.
 
 **Fluxo**:
+
 1. Recebe um schema Zod como parametro
-2. Valida `req.body`, `req.query` e `req.params` contra o schema
-3. Chama `next()` se valido
-4. Retorna erro 400 com detalhes da validacao se invalido
+1. Valida `req.body`, `req.query` e `req.params` contra o schema
+1. Chama `next()` se valido
+1. Retorna erro 400 com detalhes da validacao se invalido
 
 **Console.log de debug:**
-```
+
+```text
 [VALIDACAO] Iniciando validacao dos dados...
 [VALIDACAO] Dados recebidos: {"name":"Pizzas"}
 [VALIDACAO] Dados validos! Continuando...
@@ -443,6 +475,7 @@ router.post(
 ```
 
 **Uso**:
+
 ```typescript
 router.post(
   "/users",
@@ -452,10 +485,12 @@ router.post(
 ```
 
 **Respostas de Erro**:
+
 - `400`: Erro de validacao com detalhes dos campos invalidos
 - `500`: Erro interno do servidor
 
 **Exemplo de resposta de erro**:
+
 ```json
 {
   "Error": "Erro de Validacao",
@@ -473,16 +508,18 @@ router.post(
 
 **Configuracoes**:
 
-| Rate Limiter       | Tentativas | Janela   | Aplicado em |
-|--------------------|------------|----------|-------------|
-| loginRateLimiter   | 5          | 15 min   | POST /session |
-| refreshRateLimiter | 10         | 15 min   | POST /refresh |
+| Rate Limiter       | Tentativas | Janela | Aplicado em   |
+|--------------------|------------|--------|---------------|
+| loginRateLimiter   | 5          | 15 min | POST /session |
+| refreshRateLimiter | 10         | 15 min | POST /refresh |
 
 **Opcoes**:
+
 - `skipSuccessfulRequests: true` - So conta tentativas falhas (status >= 400)
 - `standardHeaders: true` - Retorna info de rate limit nos headers
 
 **Respostas de Erro**:
+
 - `429`: "Muitas tentativas de login. Tente novamente em 15 minutos."
 
 ---
@@ -508,6 +545,7 @@ Valida criacao de novos usuarios:
 ```
 
 **Validacoes de senha**:
+
 - Minimo 8 caracteres
 - Pelo menos uma letra maiuscula
 - Pelo menos um numero
@@ -565,6 +603,7 @@ Cria um novo usuario no sistema.
 **Middlewares**: `validateSchema(createUserSchema)`
 
 **Body**:
+
 ```json
 {
   "name": "Joao Silva",
@@ -574,6 +613,7 @@ Cria um novo usuario no sistema.
 ```
 
 **Resposta de Sucesso (201)**:
+
 ```json
 {
   "message": "Usuario criado com sucesso",
@@ -596,6 +636,7 @@ Autentica um usuario e retorna tokens JWT.
 **Middlewares**: `loginRateLimiter`, `validateSchema(authenticateUserSchema)`
 
 **Body**:
+
 ```json
 {
   "email": "joao@example.com",
@@ -604,6 +645,7 @@ Autentica um usuario e retorna tokens JWT.
 ```
 
 **Resposta de Sucesso (200)**:
+
 ```json
 {
   "user": {
@@ -626,6 +668,7 @@ Renova os tokens usando o refresh token.
 **Middlewares**: `refreshRateLimiter`, `validateSchema(refreshTokenSchema)`
 
 **Body**:
+
 ```json
 {
   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -633,6 +676,7 @@ Renova os tokens usando o refresh token.
 ```
 
 **Resposta de Sucesso (200)**:
+
 ```json
 {
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -651,11 +695,13 @@ Retorna informacoes do usuario autenticado.
 **Middlewares**: `isAuthenticated`
 
 **Headers**:
-```
+
+```text
 Authorization: Bearer <access_token>
 ```
 
 **Resposta de Sucesso (200)**:
+
 ```json
 {
   "id": "uuid-do-usuario",
@@ -675,15 +721,59 @@ Faz logout do usuario (invalida todos os refresh tokens).
 **Middlewares**: `isAuthenticated`
 
 **Headers**:
-```
+
+```text
 Authorization: Bearer <access_token>
 ```
 
 **Resposta de Sucesso (200)**:
+
 ```json
 {
   "message": "Logout realizado com sucesso"
 }
+```
+
+---
+
+#### **GET /category**
+
+Lista todas as categorias cadastradas no sistema.
+
+**Middlewares**: `isAuthenticated`
+
+**Headers**:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+[
+  {
+    "id": "uuid-categoria-1",
+    "name": "Pizzas Salgadas",
+    "createdAt": "2025-01-09T10:30:00.000Z",
+    "updatedAt": "2025-01-09T10:30:00.000Z"
+  },
+  {
+    "id": "uuid-categoria-2",
+    "name": "Pizzas Doces",
+    "createdAt": "2025-01-09T11:00:00.000Z",
+    "updatedAt": "2025-01-09T11:00:00.000Z"
+  }
+]
+```
+
+**Console.log de debug**:
+
+```text
+[CONTROLLER] ListCategoriesController - Listando categorias...
+[SERVICE] ListCategoriesService - Buscando categorias...
+[SERVICE] 2 categoria(s) encontrada(s)
+[CONTROLLER] Categorias retornadas com sucesso!
 ```
 
 ---
@@ -697,11 +787,13 @@ Cria uma nova categoria de produtos.
 **Middlewares**: `isAuthenticated`, `isAdmin`, `validateSchema(createCategorySchema)`
 
 **Headers**:
-```
+
+```text
 Authorization: Bearer <access_token>
 ```
 
 **Body**:
+
 ```json
 {
   "name": "Pizzas Doces"
@@ -709,6 +801,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Resposta de Sucesso (201)**:
+
 ```json
 {
   "id": "uuid-gerado",
@@ -719,11 +812,118 @@ Authorization: Bearer <access_token>
 
 ---
 
+#### **POST /product**
+
+Cria um novo produto com upload de imagem para Cloudinary.
+
+**Middlewares**: `isAuthenticated`, `isAdmin`, `upload.single("file")`, `validateSchema(createProductSchema)`
+
+**Headers**:
+
+```text
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+```
+
+**Body (form-data)**:
+
+| Campo       | Tipo   | Descricao                          |
+|-------------|--------|------------------------------------|
+| name        | string | Nome do produto (min 2 caracteres) |
+| description | string | Descricao (min 10 caracteres)      |
+| price       | number | Preco em centavos                  |
+| categoryId  | string | UUID da categoria                  |
+| file        | file   | Imagem do produto (jpg, png)       |
+
+**Resposta de Sucesso (201)**:
+
+```json
+{
+  "id": "uuid-gerado",
+  "name": "Pizza Margherita",
+  "description": "Pizza tradicional com molho de tomate e mussarela",
+  "price": 4500,
+  "banner": "https://res.cloudinary.com/xxx/image/upload/xxx.jpg",
+  "disabled": false,
+  "categoryId": "uuid-categoria",
+  "createdAt": "2025-01-09T10:30:00.000Z",
+  "updatedAt": "2025-01-09T10:30:00.000Z"
+}
+```
+
+---
+
+#### **DELETE /product**
+
+Deleta um produto existente.
+
+**Middlewares**: `isAuthenticated`, `isAdmin`, `validateSchema(deleteProductSchema)`
+
+**Headers**:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+**Query String**:
+
+```text
+DELETE /product?product_id=uuid-do-produto
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+{
+  "message": "Produto deletado com sucesso"
+}
+```
+
+---
+
+#### **GET /category/product**
+
+Lista todos os produtos de uma categoria (apenas produtos ativos).
+
+**Middlewares**: `isAuthenticated`, `validateSchema(listProductsByCategorySchema)`
+
+**Headers**:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+**Query String**:
+
+```text
+GET /category/product?category_id=uuid-da-categoria
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+[
+  {
+    "id": "uuid-produto-1",
+    "name": "Pizza Margherita",
+    "description": "Pizza tradicional com molho de tomate e mussarela",
+    "price": 4500,
+    "banner": "https://res.cloudinary.com/xxx/image/upload/xxx.jpg",
+    "disabled": false,
+    "categoryId": "uuid-categoria",
+    "createdAt": "2025-01-09T10:30:00.000Z",
+    "updatedAt": "2025-01-09T10:30:00.000Z"
+  }
+]
+```
+
+---
+
 ## Fluxo de Requisicao
 
 ### Exemplo Completo: Criacao de Categoria
 
-```
+```text
 1. POST /category
    ↓
 2. Middleware: isAuthenticated
@@ -760,7 +960,7 @@ Authorization: Bearer <access_token>
 
 ### Console.log do Fluxo Completo
 
-```
+```text
 [AUTH] Token valido - Usuario: admin@teste.com
 [ADMIN] Acesso permitido - ADMIN: admin@teste.com
 [VALIDACAO] Iniciando validacao dos dados...
@@ -781,6 +981,7 @@ Authorization: Bearer <access_token>
 ### TypeScript (`tsconfig.json`)
 
 **Configuracoes Principais**:
+
 - **Target**: ES2020
 - **Module**: CommonJS (compativel com Node.js)
 - **Strict Mode**: Ativado
@@ -792,6 +993,7 @@ Authorization: Bearer <access_token>
 ### Prisma (`prisma/schema.prisma`)
 
 **Generator**:
+
 ```prisma
 generator client {
   provider = "prisma-client"
@@ -800,6 +1002,7 @@ generator client {
 ```
 
 **Datasource**:
+
 ```prisma
 datasource db {
   provider = "postgresql"
@@ -823,6 +1026,7 @@ PORT=3333
 ```
 
 **Variaveis Obrigatorias**:
+
 - `DATABASE_URL`: String de conexao PostgreSQL
 - `JWT_SECRET`: Chave secreta para Access Token
 - `JWT_REFRESH_SECRET`: Chave secreta para Refresh Token
@@ -842,11 +1046,13 @@ PORT=3333
 ```
 
 **Comandos**:
+
 - `npm run dev` - Desenvolvimento com hot-reload
 - `npm run build` - Compila TypeScript para JavaScript
 - `npm start` - Executa em producao
 
 **Comandos Prisma**:
+
 ```bash
 npx prisma migrate dev --name nome_da_migracao  # Criar migracao
 npx prisma migrate deploy                        # Aplicar migracoes
@@ -859,52 +1065,97 @@ npx prisma generate                              # Gerar Prisma Client
 ## Seguranca
 
 ### Autenticacao
+
 - **JWT** com Access Token (15 min) + Refresh Token (2 dias)
 - **Rotacao de tokens** - Refresh token e invalidado apos uso
 - Tokens enviados no header: `Authorization: Bearer <token>`
 
 ### Autorizacao
+
 - Sistema de roles: `STAFF` e `ADMIN`
 - Rotas protegidas por middlewares `isAuthenticated` e `isAdmin`
 
 ### Protecao contra Brute Force
+
 - **Rate limiting** no login (5 tentativas/15 min)
 - **Rate limiting** no refresh (10 tentativas/15 min)
 
 ### Criptografia
+
 - **bcryptjs** com salt de 10 rounds para senhas
 - Senhas nunca sao retornadas nas respostas da API
 
 ### Validacao
+
 - **Zod** valida todos os inputs antes de chegarem a logica de negocio
 - Mensagens de erro customizadas em portugues
+
+### Upload de Imagens
+
+O sistema utiliza **Multer + Sharp + Cloudinary** para upload otimizado de imagens:
+
+**Fluxo do Upload**:
+
+```text
+Imagem -> Multer (memoryStorage) -> Sharp (compressao) -> Cloudinary (nuvem)
+```
+
+**Configuracoes do Multer** (`src/config/multer.ts`):
+
+- **Storage**: `memoryStorage` (imagem fica em buffer, nao salva no disco)
+- **Limite de tamanho**: 4MB
+- **Formatos aceitos**: JPG e PNG
+
+**Compressao com Sharp**:
+
+- Redimensiona para max 800x800 pixels (mantem proporcao)
+- Nao aumenta imagens pequenas
+- Converte para JPEG com qualidade 80%
+
+**Cloudinary**:
+
+- Imagens armazenadas na pasta `pizzaria/`
+- Upload via stream (buffer direto para nuvem)
+- Retorna URL segura (HTTPS)
+
+**Variaveis de ambiente necessarias**:
+
+```bash
+CLOUDINARY_NAME="seu-cloud-name"
+CLOUDINARY_KEY="sua-api-key"
+CLOUDINARY_SECRET="sua-api-secret"
+```
 
 ---
 
 ## Como Iniciar o Projeto
 
 1. **Instalar dependencias**:
-```bash
-npm install
-```
 
-2. **Configurar variaveis de ambiente**:
-```bash
-cp .env.example .env
-# Editar .env com suas configuracoes
-```
+   ```bash
+   npm install
+   ```
 
-3. **Executar migracoes**:
-```bash
-npx prisma migrate dev
-```
+1. **Configurar variaveis de ambiente**:
 
-4. **Iniciar servidor**:
-```bash
-npm run dev
-```
+   ```bash
+   cp .env.example .env
+   # Editar .env com suas configuracoes
+   ```
 
-5. **Servidor rodando em**: `http://localhost:3333`
+1. **Executar migracoes**:
+
+   ```bash
+   npx prisma migrate dev
+   ```
+
+1. **Iniciar servidor**:
+
+   ```bash
+   npm run dev
+   ```
+
+1. **Servidor rodando em**: `http://localhost:3333`
 
 ---
 
