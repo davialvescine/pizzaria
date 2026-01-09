@@ -9,7 +9,7 @@ import { validateSchema } from "./middlewares/validateSchema";
 import { isAuthenticated } from "./middlewares/isAuthenticated";
 import { isAdmin } from "./middlewares/isAdmin";
 import {
-  loginRateLimiter,
+loginRateLimiter,
   refreshRateLimiter,
 } from "./middlewares/rateLimiter";
 import {
@@ -17,6 +17,7 @@ import {
   authenticateUserSchema,
   refreshTokenSchema,
 } from "./schemas/userSchemas";
+import { createCategorySchema } from "./schemas/categorySchemas";
 
 const router = Router();
 
@@ -52,6 +53,12 @@ router.get("/me", isAuthenticated, new DetailUserController().handle);
 router.post("/logout", isAuthenticated, new LogoutController().handle);
 
 // Categoria (apenas ADMIN)
-router.post("/category", isAuthenticated, isAdmin, new CreateCategoryController().handle);
+router.post(
+  "/category",
+  isAuthenticated,
+  isAdmin,
+  validateSchema(createCategorySchema),
+  new CreateCategoryController().handle
+);
 
 export { router };

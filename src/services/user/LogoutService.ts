@@ -6,6 +6,9 @@ interface LogoutRequest {
 
 class LogoutService {
   async execute({ userId }: LogoutRequest) {
+    console.log("[SERVICE] LogoutService - Iniciando logout...");
+    console.log("[SERVICE] UserId:", userId);
+
     // ===========================================
     // DELETAR TODOS OS REFRESH TOKENS DO USUÁRIO
     // ===========================================
@@ -17,6 +20,8 @@ class LogoutService {
     await prisma.refreshToken.deleteMany({
       where: { userId },
     });
+
+    console.log("[SERVICE] Logout realizado! Todos os tokens deletados.");
 
     return { message: "Logout realizado com sucesso" };
   }

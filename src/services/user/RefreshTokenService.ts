@@ -12,6 +12,8 @@ interface TokenPayload {
 
 class RefreshTokenService {
   async execute({ refreshToken }: RefreshTokenRequest) {
+    console.log("[SERVICE] RefreshTokenService - Iniciando refresh...");
+
     // ===========================================
     // 1. VERIFICAR SE O REFRESH TOKEN É VÁLIDO (JWT)
     // ===========================================
@@ -25,7 +27,9 @@ class RefreshTokenService {
         refreshToken,
         process.env.JWT_REFRESH_SECRET as string
       ) as TokenPayload;
+      console.log("[SERVICE] Token JWT válido");
     } catch {
+      console.log("[SERVICE] Erro: Token JWT inválido ou expirado");
       throw new Error("Refresh token inválido ou expirado");
     }
 
@@ -42,8 +46,11 @@ class RefreshTokenService {
     });
 
     if (!tokenExists) {
+      console.log("[SERVICE] Erro: Token não existe no banco (já usado ou revogado)");
       throw new Error("Token já foi utilizado ou revogado");
     }
+
+    console.log("[SERVICE] Token existe no banco, verificando usuário...");
 
     // ===========================================
     // 3. BUSCAR USUÁRIO NO BANCO
@@ -111,6 +118,8 @@ class RefreshTokenService {
     // ===========================================
     // 8. RETORNAR AMBOS OS TOKENS
     // ===========================================
+    console.log("[SERVICE] Tokens renovados com sucesso!");
+
     return {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,

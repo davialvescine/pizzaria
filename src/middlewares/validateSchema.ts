@@ -10,6 +10,9 @@ import { ZodError, ZodType } from "zod";
 export const validateSchema =
   (schema: ZodType) =>
   async (req: Request, res: Response, next: NextFunction) => {
+    console.log("[VALIDAÇÃO] Iniciando validação dos dados...");
+    console.log("[VALIDAÇÃO] Dados recebidos:", JSON.stringify(req.body));
+
     try {
       // Valida body, params e query da requisição
       await schema.parseAsync({
@@ -18,11 +21,14 @@ export const validateSchema =
         query: req.query,
       });
 
+      console.log("[VALIDAÇÃO] Dados válidos! Continuando...");
+
       // Se passou na validação, continua para o próximo middleware
       return next();
     } catch (error) {
       // Se o erro for de validação do Zod
       if (error instanceof ZodError) {
+        console.log("[VALIDAÇÃO] Erro de validação:", error.issues);
         return res.status(400).json({
           Error: "Erro de Validação",
           details: error.issues.map((issue) => ({
@@ -31,6 +37,8 @@ export const validateSchema =
           })),
         });
       }
+
+      console.log("[VALIDAÇÃO] Erro desconhecido:", error);
 
       // Erro desconhecido
       return res.status(500).json({

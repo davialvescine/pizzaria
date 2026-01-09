@@ -9,6 +9,9 @@ interface AuthUserRequest {
 
 class AuthUserService {
   async execute({ email, password }: AuthUserRequest) {
+    console.log("[SERVICE] AuthUserService - Iniciando login...");
+    console.log("[SERVICE] Email:", email);
+
     // ===========================================
     // 1. VERIFICAR SE O USUÁRIO EXISTE
     // ===========================================
@@ -17,8 +20,11 @@ class AuthUserService {
     });
 
     if (!user) {
+      console.log("[SERVICE] Erro: Usuário não encontrado");
       throw new Error("Email ou senha incorretos");
     }
+
+    console.log("[SERVICE] Usuário encontrado, verificando senha...");
 
     // ===========================================
     // 2. VERIFICAR SE A SENHA ESTÁ CORRETA
@@ -27,8 +33,11 @@ class AuthUserService {
     const passwordMatch = await compare(password, user.password);
 
     if (!passwordMatch) {
+      console.log("[SERVICE] Erro: Senha incorreta");
       throw new Error("Email ou senha incorretos");
     }
+
+    console.log("[SERVICE] Senha correta, gerando tokens...");
 
     // ===========================================
     // 3. GERAR ACCESS TOKEN (15 minutos)
@@ -83,6 +92,8 @@ class AuthUserService {
     // ===========================================
     // 6. RETORNAR DADOS DO USUÁRIO E TOKENS
     // ===========================================
+    console.log("[SERVICE] Login realizado com sucesso! Role:", user.role);
+
     return {
       user: {
         id: user.id,
