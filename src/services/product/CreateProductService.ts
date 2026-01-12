@@ -22,7 +22,13 @@ class CreateProductService {
     imageName,
   }: CreateProductServiceProps) {
     console.log("[SERVICE] CreateProductService - Iniciando...");
-    console.log("[SERVICE] Dados recebidos:", { name, description, price, category_id, imageName });
+    console.log("[SERVICE] Dados recebidos:", {
+      name,
+      description,
+      price,
+      category_id,
+      imageName,
+    });
 
     // ===========================================
     // 1. VERIFICAR SE A CATEGORIA EXISTE
@@ -55,7 +61,11 @@ class CreateProductService {
         .jpeg({ quality: 80 })
         .toBuffer();
 
-      console.log("[SERVICE] Imagem compactada:", compressedBuffer.length, "bytes");
+      console.log(
+        "[SERVICE] Imagem compactada:",
+        compressedBuffer.length,
+        "bytes"
+      );
     } catch (error) {
       console.log("[SERVICE] Erro ao compactar imagem:", error);
       throw new Error("Erro ao processar imagem");
