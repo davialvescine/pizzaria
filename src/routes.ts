@@ -116,6 +116,8 @@ router.delete(
 router.get(
   "/category/product",
   isAuthenticated,
+  isAdmin,
+  upload.single("file"),
   validateSchema(listProductsByCategorySchema),
   new ListProductsByCategoryController().handle
 );

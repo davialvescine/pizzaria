@@ -10,9 +10,9 @@ import multer from "multer";
 export default {
   storage: multer.memoryStorage(),
 
-  // Limite de 4MB
+  // Limite de 5MB
   limits: {
-    fileSize: 4 * 1024 * 1024,
+    fileSize: 5 * 1024 * 1024,
   },
 
   // Aceita apenas JPG e PNG
