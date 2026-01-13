@@ -17,20 +17,26 @@ class DeleteProductService {
       throw new Error("Produto nao encontrado");
     }
 
+    if (productExists.disabled) {
+      console.log("[SERVICE] Erro: Produto ja esta desabilitado");
+      throw new Error("Produto ja esta desabilitado");
+    }
+
     console.log("[SERVICE] Produto encontrado:", productExists.name);
 
     // ===========================================
-    // 2. DELETAR O PRODUTO
+    // 2. SOFT DELETE - DESABILITAR O PRODUTO
     // ===========================================
-    // Nota: A imagem no Cloudinary permanece (pode ser deletada manualmente)
-    // Para deletar do Cloudinary, seria necessario extrair o public_id da URL
-    await prisma.product.delete({
+    // Em vez de deletar, marcamos como disabled: true
+    // Assim o produto pode ser recuperado depois se necessario
+    const product = await prisma.product.update({
       where: { id: productId },
+      data: { disabled: true },
     });
 
-    console.log("[SERVICE] Produto deletado com sucesso!");
+    console.log("[SERVICE] Produto desabilitado com sucesso!");
 
-    return { message: "Produto deletado com sucesso" };
+    return { message: "Produto desabilitado com sucesso", product };
   }
 }
 
