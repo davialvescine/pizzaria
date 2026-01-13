@@ -51,3 +51,17 @@ export const listProductsByCategorySchema = z.object({
       .uuid({ error: "ID da categoria deve ser um UUID valido" }),
   }),
 });
+
+// ===========================================
+// SCHEMA: LISTAR TODOS OS PRODUTOS
+// ===========================================
+// Valida o disabled enviado via query string (opcional)
+// Ex: GET /products?disabled=false (padrao: false)
+export const listAllProductsSchema = z.object({
+  query: z.object({
+    disabled: z
+      .string()
+      .transform((val) => val === "true")
+      .optional(),
+  }),
+});

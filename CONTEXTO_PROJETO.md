@@ -111,9 +111,19 @@ backend/
 │   │   ├── Category/
 │   │   │   ├── CreateCategoryController.ts
 │   │   │   └── ListCategoriesController.ts
+│   │   ├── order/
+│   │   │   ├── AddItemController.ts
+│   │   │   ├── CreateOrderController.ts
+│   │   │   ├── DeleteOrderController.ts
+│   │   │   ├── DetailOrderController.ts
+│   │   │   ├── FinishOrderController.ts
+│   │   │   ├── ListOrdersController.ts
+│   │   │   ├── RemoveItemController.ts
+│   │   │   └── SendOrderController.ts
 │   │   ├── product/
 │   │   │   ├── CreateProductController.ts
 │   │   │   ├── DeleteProductController.ts
+│   │   │   ├── ListAllProductsController.ts
 │   │   │   └── ListProductsByCategoryController.ts
 │   │   └── user/
 │   │       ├── AuthUserController.ts
@@ -133,15 +143,26 @@ backend/
 │   │   └── index.ts
 │   ├── schemas/                  # Schemas de validacao Zod
 │   │   ├── categorySchemas.ts
+│   │   ├── orderSchemas.ts
 │   │   ├── productSchemas.ts
 │   │   └── userSchemas.ts
 │   ├── services/                 # Services (logica de negocio)
 │   │   ├── Category/
 │   │   │   ├── CreateCategoryService.ts
 │   │   │   └── ListCategoriesService.ts
+│   │   ├── order/
+│   │   │   ├── AddItemService.ts
+│   │   │   ├── CreateOrderService.ts
+│   │   │   ├── DeleteOrderService.ts
+│   │   │   ├── DetailOrderService.ts
+│   │   │   ├── FinishOrderService.ts
+│   │   │   ├── ListOrdersService.ts
+│   │   │   ├── RemoveItemService.ts
+│   │   │   └── SendOrderService.ts
 │   │   ├── product/
 │   │   │   ├── CreateProductService.ts
 │   │   │   ├── DeleteProductService.ts
+│   │   │   ├── ListAllProductsService.ts
 │   │   │   └── ListProductsByCategoryService.ts
 │   │   └── user/
 │   │       ├── AuthUserService.ts
@@ -590,6 +611,160 @@ Valida criacao de categorias:
 }
 ```
 
+### Product Schemas (`schemas/productSchemas.ts`)
+
+#### **createProductSchema**
+
+Valida criacao de produtos:
+
+```typescript
+{
+  body: {
+    name: string (min: 2 caracteres),
+    description: string (min: 10 caracteres),
+    price: number (positivo, em centavos),
+    categoryId: UUID valido
+  }
+}
+```
+
+#### **deleteProductSchema**
+
+Valida delecao de produtos:
+
+```typescript
+{
+  query: {
+    product_id: UUID valido
+  }
+}
+```
+
+#### **listProductsByCategorySchema**
+
+Valida listagem por categoria:
+
+```typescript
+{
+  query: {
+    category_id: UUID valido
+  }
+}
+```
+
+#### **listAllProductsSchema**
+
+Valida listagem de todos os produtos:
+
+```typescript
+{
+  query: {
+    disabled: boolean (opcional, padrao: false)
+  }
+}
+```
+
+### Order Schemas (`schemas/orderSchemas.ts`)
+
+#### **createOrderSchema**
+
+Valida criacao de pedidos:
+
+```typescript
+{
+  body: {
+    table: number (inteiro positivo),
+    name: string (opcional)
+  }
+}
+```
+
+#### **addItemSchema**
+
+Valida adicao de itens ao pedido:
+
+```typescript
+{
+  body: {
+    order_id: UUID valido,
+    product_id: UUID valido,
+    amount: number (inteiro positivo)
+  }
+}
+```
+
+#### **removeItemSchema**
+
+Valida remocao de itens:
+
+```typescript
+{
+  query: {
+    item_id: UUID valido
+  }
+}
+```
+
+#### **listOrdersSchema**
+
+Valida listagem de pedidos:
+
+```typescript
+{
+  query: {
+    draft: boolean (opcional)
+  }
+}
+```
+
+#### **detailOrderSchema**
+
+Valida detalhes do pedido:
+
+```typescript
+{
+  query: {
+    order_id: UUID valido
+  }
+}
+```
+
+#### **sendOrderSchema**
+
+Valida envio para producao:
+
+```typescript
+{
+  body: {
+    order_id: UUID valido
+  }
+}
+```
+
+#### **finishOrderSchema**
+
+Valida finalizacao do pedido:
+
+```typescript
+{
+  body: {
+    order_id: UUID valido
+  }
+}
+```
+
+#### **deleteOrderSchema**
+
+Valida delecao de pedidos:
+
+```typescript
+{
+  query: {
+    order_id: UUID valido
+  }
+}
+```
+
 ---
 
 ## Endpoints
@@ -915,6 +1090,294 @@ GET /category/product?category_id=uuid-da-categoria
     "updatedAt": "2025-01-09T10:30:00.000Z"
   }
 ]
+```
+
+---
+
+### **Rotas de Produtos Adicionais**
+
+#### **GET /products**
+
+Lista todos os produtos cadastrados com filtro por status.
+
+**Middlewares**: `isAuthenticated`, `validateSchema(listAllProductsSchema)`
+
+**Headers**:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+**Query String (opcional)**:
+
+```text
+GET /products              # Lista produtos ativos (disabled=false, padrao)
+GET /products?disabled=false  # Lista produtos ativos
+GET /products?disabled=true   # Lista produtos desabilitados
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+[
+  {
+    "id": "uuid-produto-1",
+    "name": "Pizza Margherita",
+    "description": "Pizza tradicional",
+    "price": 4500,
+    "banner": "https://res.cloudinary.com/xxx/image/upload/xxx.jpg",
+    "disabled": false,
+    "categoryId": "uuid-categoria",
+    "category": {
+      "id": "uuid-categoria",
+      "name": "Pizzas Salgadas"
+    }
+  }
+]
+```
+
+---
+
+### **Rotas de Pedidos** (precisa de login)
+
+#### **POST /order**
+
+Cria um novo pedido (rascunho).
+
+**Middlewares**: `isAuthenticated`, `validateSchema(createOrderSchema)`
+
+**Body**:
+
+```json
+{
+  "table": 1,
+  "name": "Mesa do Fundo"
+}
+```
+
+**Resposta de Sucesso (201)**:
+
+```json
+{
+  "id": "uuid-pedido",
+  "table": 1,
+  "name": "Mesa do Fundo",
+  "draft": true,
+  "status": false,
+  "total": 0,
+  "createdAt": "2025-01-12T10:30:00.000Z"
+}
+```
+
+---
+
+#### **POST /order/add**
+
+Adiciona um item ao pedido.
+
+**Middlewares**: `isAuthenticated`, `validateSchema(addItemSchema)`
+
+**Body**:
+
+```json
+{
+  "order_id": "uuid-pedido",
+  "product_id": "uuid-produto",
+  "amount": 2
+}
+```
+
+**Resposta de Sucesso (201)**:
+
+```json
+{
+  "id": "uuid-item",
+  "amount": 2,
+  "orderId": "uuid-pedido",
+  "productId": "uuid-produto"
+}
+```
+
+---
+
+#### **DELETE /order/remove**
+
+Remove um item do pedido.
+
+**Middlewares**: `isAuthenticated`, `validateSchema(removeItemSchema)`
+
+**Query String**:
+
+```text
+DELETE /order/remove?item_id=uuid-item
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+{
+  "message": "Item removido com sucesso"
+}
+```
+
+---
+
+#### **GET /orders**
+
+Lista todos os pedidos (com filtro opcional por draft).
+
+**Middlewares**: `isAuthenticated`, `validateSchema(listOrdersSchema)`
+
+**Query String (opcional)**:
+
+```text
+GET /orders?draft=true    # Lista apenas rascunhos
+GET /orders?draft=false   # Lista apenas enviados
+GET /orders               # Lista todos
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+[
+  {
+    "id": "uuid-pedido",
+    "table": 1,
+    "draft": true,
+    "status": false,
+    "total": 9000,
+    "_count": { "Items": 2 }
+  }
+]
+```
+
+---
+
+#### **GET /order/detail**
+
+Retorna detalhes de um pedido com todos os itens.
+
+**Middlewares**: `isAuthenticated`, `validateSchema(detailOrderSchema)`
+
+**Query String**:
+
+```text
+GET /order/detail?order_id=uuid-pedido
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+{
+  "id": "uuid-pedido",
+  "table": 1,
+  "draft": true,
+  "status": false,
+  "total": 9000,
+  "Items": [
+    {
+      "id": "uuid-item",
+      "amount": 2,
+      "product": {
+        "id": "uuid-produto",
+        "name": "Pizza Margherita",
+        "price": 4500,
+        "banner": "url-imagem"
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### **PUT /order/send**
+
+Envia o pedido para producao (muda draft para false).
+
+**Middlewares**: `isAuthenticated`, `validateSchema(sendOrderSchema)`
+
+**Body**:
+
+```json
+{
+  "order_id": "uuid-pedido"
+}
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+{
+  "id": "uuid-pedido",
+  "draft": false,
+  "status": false
+}
+```
+
+---
+
+#### **PUT /order/finish**
+
+Finaliza o pedido (muda status para true).
+
+**Middlewares**: `isAuthenticated`, `validateSchema(finishOrderSchema)`
+
+**Body**:
+
+```json
+{
+  "order_id": "uuid-pedido"
+}
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+{
+  "id": "uuid-pedido",
+  "draft": false,
+  "status": true
+}
+```
+
+---
+
+#### **DELETE /order**
+
+Deleta um pedido (apenas rascunhos).
+
+**Middlewares**: `isAuthenticated`, `validateSchema(deleteOrderSchema)`
+
+**Query String**:
+
+```text
+DELETE /order?order_id=uuid-pedido
+```
+
+**Resposta de Sucesso (200)**:
+
+```json
+{
+  "message": "Pedido deletado com sucesso"
+}
+```
+
+---
+
+### **Fluxo de Vida do Pedido**
+
+```text
+Criar Pedido (draft=true, status=false)
+         │
+         ▼
+Adicionar/Remover Itens (recalcula total)
+         │
+         ▼
+Enviar para Producao (draft=false)
+         │
+         ▼
+Finalizar Pedido (status=true)
 ```
 
 ---
